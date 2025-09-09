@@ -1,0 +1,1025 @@
+# Configure git with user name, email, and password. This is likely for committing the notebook to a repository.
+!git config --global user.name "NathansDac"
+!git config --global user.mail "nathansdac@gmail.com"
+!git config --global user.password "8eSY6@uKsvq4jFe"
+
+# Define variables for GitHub token, username, and repository name.
+token = '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'
+username = 'NathansDac'
+repo = 'Sleek Price'
+
+# Importing all the necessary libraries for data manipulation, visualization, and machine learning.
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import sklearn as sk # Importing the scikit-learn library
+
+# Mounting Google Drive to access the dataset stored in the drive.
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Loading the dataset into a pandas DataFrame and displaying the first five rows to inspect the data structure.
+df = pd.read_csv("//content/drive/MyDrive/CPE 221 Lab/datasets/laptop_price.csv", encoding='latin-1')
+
+df.head()
+
+DATA CLEANING AND PROCESSING
+
+
+# Checking for missing values in each column to understand data completeness.
+df.isnull().sum()
+
+# Checking if there are any missing values in the entire DataFrame.
+df.isnull().values.any()
+
+# Getting concise information about the DataFrame, including the data types of each column and the number of non-null values.
+df.info()
+
+# Visualizing the distribution of numerical features and identifying potential outliers using box plots.
+numerical_cols = ['Inches', 'Weight', 'Price_euros']
+
+plt.figure(figsize=(15, 5))
+for i, col in enumerate(numerical_cols):
+    plt.subplot(1, 3, i + 1)
+    sns.boxplot(y=df[col])
+    plt.title(f'Box Plot of {col}')
+plt.tight_layout()
+plt.show()
+
+ Analyzing Outliers
+
+Based on the box plots:
+
+- **Inches:** There are a few data points below the lower whisker around 10-11 inches. These might represent smaller, more portable laptops or netbooks which are valid entries.
+- **Weight:** There are several data points above the upper whisker, with some values exceeding 4 kg. These could represent heavier gaming laptops or workstations, which are plausible. However, extremely high values might indicate data entry errors.
+- **Price_euros:** There are many data points above the upper whisker, indicating a wide range of prices for laptops, including very expensive models. While some of these high prices are expected for high-end laptops, extremely high values could be outliers or represent genuinely expensive specialized machines.
+
+
+
+
+
+
+# Define functions to remove outliers using the Interquartile Range (IQR) and Z-score methods.
+# The choice of method depends on the distribution of the data and the nature of outliers.
+
+# Function to remove outliers using IQR
+def remove_outliers_iqr(df, column):
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    df_cleaned = df[(df[column] >= lower_bound) & (df[column] <= upper_bound)].copy()
+    return df_cleaned
+
+# Function to remove outliers using Z-score
+def remove_outliers_zscore(df, column, threshold=3):
+    z_scores = np.abs((df[column] - df[column].mean()) / df[column].std())
+    df_cleaned = df[z_scores < threshold].copy()
+    return df_cleaned
+
+# Convert 'Weight' to numeric before outlier removal by removing 'kg' and casting to float.
+df['Weight'] = df['Weight'].str.replace('kg', '').astype(float)
+
+
+# Apply outlier removal to 'Price_euros' and 'Weight' using the IQR method, suitable for potentially skewed distributions.
+df_cleaned_iqr = remove_outliers_iqr(df, 'Price_euros')
+df_cleaned_iqr_weight = remove_outliers_iqr(df_cleaned_iqr, 'Weight')
+
+# Apply outlier removal to 'Inches' using the Z-score method, suitable for data closer to a normal distribution.
+df_cleaned = remove_outliers_zscore(df_cleaned_iqr_weight, 'Inches')
+
+# Print the shape of the original and cleaned DataFrames to show the number of removed rows.
+print(f"Original shape: {df.shape}")
+print(f"Shape after removing outliers: {df_cleaned.shape}")
+
+# Display the first few rows of the cleaned DataFrame.
+display(df_cleaned.head())
+
+### Justification for Using Different Outlier Removal Methods
+
+The choice of outlier removal method for each feature is based on the visual analysis of the box plots and the nature of the potential outliers observed:
+
+- **Price_euros and Weight (IQR Method):** The box plots for 'Price_euros' and 'Weight' show a significant number of data points far above the upper whisker, suggesting a right-skewed distribution and potential extreme values that could be genuine (high-end laptops) or data errors. The IQR method is robust to skewed distributions and focuses on the spread of the central portion of the data, making it suitable for identifying and removing these more distant outliers without being overly affected by the extreme values themselves. This helps in creating a dataset less influenced by these potentially impactful outliers.
+
+- **Inches (Z-score Method):** The box plot for 'Inches' shows fewer potential outliers, located closer to the main distribution, primarily below the lower whisker. These likely represent smaller form-factor laptops which are genuine entries. The Z-score method is effective for distributions that are closer to normal and identifies data points based on their distance from the mean in terms of standard deviations. For 'Inches', this method can help identify values that are statistically unusual relative to the average screen size, which aligns with the observation of a few smaller-than-average laptops. Using the Z-score here helps retain most of the data while flagging values that are significantly different from the typical screen size.
+
+By using a combination of IQR for features with potentially skewed distributions and more extreme outliers ('Price_euros', 'Weight') and Z-score for a feature with a less skewed distribution and less extreme outliers ('Inches'), we tailor the outlier removal approach to the specific characteristics of each numerical column, aiming for a cleaner dataset that is more suitable for subsequent analysis or modeling.
+
+# Getting concise information about the DataFrame after outlier removal to check data types and non-null counts.
+df.info()
+
+# Convert the 'Ram' column from string (e.g., '8GB') to integer by removing 'GB'.
+df['Ram'] = df['Ram'].str.replace('GB', '').astype(int)
+
+# Display the updated DataFrame to confirm the data type change.
+display(df.head())
+
+# Perform one-hot encoding on the 'Company' column to convert categorical data into a numerical format suitable for machine learning models.
+# 'drop_first=True' is used to avoid multicollinearity.
+df = pd.get_dummies(df, columns=['Company'], drop_first=True, dtype=int)
+
+# Display the updated DataFrame with the new one-hot encoded columns for 'Company'.
+display(df.head())
+
+# Perform one-hot encoding on the 'TypeName' column, similar to the 'Company' column.
+df = pd.get_dummies(df, columns=['TypeName'], drop_first=True, dtype=int)
+
+# Display the updated DataFrame with the new one-hot encoded columns for 'TypeName'.
+display(df.head())
+
+# Feature engineering on the 'ScreenResolution' column to extract more useful information.
+# Extract the width and height dimensions from the resolution string using regex.
+df[['Screen_Resolution_Width', 'Screen_Resolution_Height']] = df['ScreenResolution'].str.extract(r'(\d+)x(\d+)').astype(int)
+
+# Create a new column combining width and height as a string.
+df['Screen_Resolution_Dimension'] = df['Screen_Resolution_Width'].astype(str) + 'x' + df['Screen_Resolution_Height'].astype(str)
+
+# Extract the type of screen resolution (e.g., 'Full HD', 'IPS Panel Retina Display') by removing the resolution part.
+df['Screen_Resolution_Type'] = df['ScreenResolution'].apply(lambda x: ' '.join(x.split()[:-1]))
+
+# Drop the original 'ScreenResolution' column as the relevant information has been extracted.
+df = df.drop('ScreenResolution', axis=1)
+
+# Display the updated DataFrame with the new engineered screen resolution features.
+display(df.head())
+
+# Perform one-hot encoding on the engineered 'Screen_Resolution_Type' column.
+df = pd.get_dummies(df, columns=['Screen_Resolution_Type'], drop_first=True, dtype=int)
+
+# Display the updated DataFrame with the new one-hot encoded columns for 'Screen_Resolution_Type'.
+display(df.head())
+
+# Display the unique values and their counts in the 'Cpu' column to understand the variety of CPU entries.
+display(df['Cpu'].value_counts())
+
+# Feature engineering on the 'Cpu' column to extract the CPU brand.
+# Define a function to extract the brand based on keywords in the CPU string.
+def extract_cpu_brand(cpu_string):
+    if 'Intel' in cpu_string:
+        return 'Intel'
+    elif 'AMD' in cpu_string:
+        return 'AMD'
+    elif 'Samsung' in cpu_string:
+        return 'Samsung'
+    else:
+        return 'Other'
+
+# Apply the function to create the new 'Cpu_Brand' column.
+df['Cpu_Brand'] = df['Cpu'].apply(extract_cpu_brand)
+
+# Display the updated DataFrame with the new 'Cpu_Brand' column.
+display(df.head())
+
+# Feature engineering on the 'Cpu' column to extract the CPU type.
+# Define a function to extract the type based on keywords in the CPU string.
+def extract_cpu_type(cpu_string):
+    if 'Core i' in cpu_string:
+        return 'Core i'
+    elif 'Ryzen' in cpu_string:
+        return 'Ryzen'
+    elif 'Celeron' in cpu_string:
+        return 'Celeron'
+    elif 'Pentium' in cpu_string:
+        return 'Pentium'
+    elif 'Atom' in cpu_string:
+        return 'Atom'
+    elif 'Xeon' in cpu_string:
+        return 'Xeon'
+    elif 'FX' in cpu_string:
+        return 'FX'
+    elif 'E-Series' in cpu_string:
+        return 'E-Series'
+    elif 'A' in cpu_string:
+        return 'A'
+    elif 'M' in cpu_string:
+        return 'M'
+    else:
+        return 'Other'
+
+# Apply the function to create the new 'Cpu_Type' column.
+df['Cpu_Type'] = df['Cpu'].apply(extract_cpu_type)
+
+# Display the updated DataFrame with the new 'Cpu_Type' column.
+display(df.head())
+
+# Feature engineering on the 'Cpu' column to extract the clock speed.
+import re # Import the regular expression module
+
+# Define a function to extract the clock speed (GHz) from the CPU string using regex.
+def extract_clock_speed(cpu_string):
+    match = re.search(r'(\d+\.?\d*)GHz', cpu_string) # Find a pattern of digits, optional dot, digits, followed by "GHz"
+    if match:
+        return float(match.group(1)) # Extract the captured group (the number) and convert to float
+    return np.nan # Return NaN if no clock speed is found
+
+# Apply the function to create the new 'Cpu_Clock_Speed' column.
+df['Cpu_Clock_Speed'] = df['Cpu'].apply(extract_clock_speed)
+
+# Display the updated DataFrame with the new 'Cpu_Clock_Speed' column.
+display(df.head())
+
+# Perform one-hot encoding on the engineered 'Cpu_Brand' and 'Cpu_Type' columns.
+df = pd.get_dummies(df, columns=['Cpu_Brand'], drop_first=True, dtype=int)
+df = pd.get_dummies(df, columns=['Cpu_Type'], drop_first=True, dtype=int)
+
+# Display the updated DataFrame with the new one-hot encoded columns for CPU brand and type.
+display(df.head())
+
+# Drop the original 'Cpu' column as its relevant information has been extracted into new features.
+df = df.drop('Cpu', axis=1)
+
+# Display the updated DataFrame to confirm the removal of the 'Cpu' column.
+display(df.head())
+
+# Feature engineering on the 'Memory' column to separate storage types (SSD, HDD, Flash Storage) and their sizes.
+import re # Import the regular expression module
+
+# Define a function to parse the storage string and extract sizes for different storage types.
+def parse_storage(storage_string):
+    # Initialize storage sizes to 0
+    ssd_gb = 0
+    hdd_gb = 0
+    flash_gb = 0
+
+    # Split the string to handle multiple storage types (e.g., '128GB SSD + 1TB HDD')
+    storage_types = storage_string.split('+')
+
+    for item in storage_types:
+        # Check for SSD
+        if 'SSD' in item:
+            size_gb = 0
+            # Use regex to find a number followed by 'GB' or 'TB'
+            match = re.search(r'(\d+)\s*(GB|TB)', item)
+            if match:
+                size = int(match.group(1))
+                unit = match.group(2)
+                if unit == 'TB':
+                    size_gb = size * 1024 # Convert TB to GB
+                else:
+                    size_gb = size
+            ssd_gb = size_gb
+
+        # Check for HDD
+        if 'HDD' in item:
+            size_gb = 0
+            match = re.search(r'(\d+)\s*(GB|TB)', item)
+            if match:
+                size = int(match.group(1))
+                unit = match.group(2)
+                if unit == 'TB':
+                    size_gb = size * 1024
+                else:
+                    size_gb = size
+            hdd_gb = size_gb
+
+        # Check for Flash Storage
+        if 'Flash' in item:
+            size_gb = 0
+            match = re.search(r'(\d+)\s*(GB|TB)', item)
+            if match:
+                size = int(match.group(1))
+                unit = match.group(2)
+                if unit == 'TB':
+                    size_gb = size * 1024
+                else:
+                    size_gb = size
+            flash_gb = size_gb
+
+    # Return a pandas Series with the extracted storage sizes
+    return pd.Series([ssd_gb, hdd_gb, flash_gb])
+
+# Apply the function to the 'Memory' column and create new columns for each storage type.
+df[['SSD_GB', 'HDD_GB', 'Flash_Storage_GB']] = df['Memory'].apply(parse_storage)
+
+# Drop the original 'Memory' column as its information has been extracted.
+df = df.drop('Memory', axis=1)
+
+# Display the updated DataFrame to see the new storage columns.
+df.head()
+
+# Feature engineering on the 'Gpu' and 'OpSys' columns to extract simplified categories.
+
+# --- Corrected code for 'Gpu' ---
+
+# Define a function to extract the main GPU brand.
+def get_gpu_brand(gpu_string):
+    """
+    Extracts the main GPU brand from a string.
+    """
+    if 'Nvidia' in gpu_string:
+        return 'Nvidia'
+    elif 'AMD' in gpu_string:
+        return 'AMD'
+    elif 'Intel' in gpu_string:
+        return 'Intel'
+    else:
+        return 'Other'
+
+# Create the new 'Gpu_Brand' column by applying the function.
+df['Gpu_Brand'] = df['Gpu'].apply(get_gpu_brand)
+
+# One-hot encode the new, simplified 'Gpu_Brand' column.
+df = pd.get_dummies(df, columns=['Gpu_Brand'], drop_first=True, dtype=int)
+
+# Drop the original 'Gpu' column as it's no longer needed.
+df = df.drop('Gpu', axis=1)
+
+# --- Corrected code for 'OpSys' ---
+
+# Define a function to extract the general operating system type.
+def get_os_type(os_string):
+    """
+    Extracts the general operating system type.
+    """
+    if 'Windows' in os_string:
+        return 'Windows'
+    elif 'Mac' in os_string:
+        return 'Mac'
+    elif 'Linux' in os_string:
+        return 'Linux'
+    else:
+        return 'Other'
+
+# Create the new 'OpSys_Type' column by applying the function.
+df['OpSys_Type'] = df['OpSys'].apply(get_os_type)
+
+# One-hot encode the new, simplified 'OpSys_Type' column.
+df = pd.get_dummies(df, columns=['OpSys_Type'], drop_first=True, dtype=int)
+
+# Drop the original 'OpSys' column as it's no longer needed.
+df = df.drop('OpSys', axis=1)
+
+# Display the updated DataFrame to see the changes in GPU and OpSys columns.
+df.head()
+
+# Drop the 'Product' column as it contains too many unique values and is too granular for effective modeling.
+df = df.drop('Product', axis=1)
+
+# Display the information and the first few rows of the final DataFrame with all engineered features before modeling.
+df.info()
+df.head()
+
+# --- Phase 2: Exploratory Data Analysis (EDA) ---
+
+# Plot a correlation matrix to see how all numerical features relate to each other and to 'Price_euros'.
+# A heatmap is used to visualize the correlation coefficients.
+plt.figure(figsize=(15, 10))
+sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', fmt=".2f") # Calculate correlations and plot heatmap
+plt.title('Correlation Matrix of Features')
+plt.show()
+
+# Visualize the relationship between key features and 'Price_euros' using scatter plots.
+# Scatter plot for 'Ram' vs. 'Price_euros' - 'Ram' is expected to be a strong predictor.
+plt.figure(figsize=(12, 6))
+sns.scatterplot(x='Ram', y='Price_euros', data=df)
+plt.title('Ram (GB) vs. Price (Euros)')
+plt.xlabel('Ram (GB)')
+plt.ylabel('Price (Euros)')
+plt.show()
+
+# Scatter plot for 'Weight' vs. 'Price_euros' to see their relationship.
+plt.figure(figsize=(12, 6))
+sns.scatterplot(x='Weight', y='Price_euros', data=df)
+plt.title('Weight (kg) vs. Price (Euros)')
+plt.xlabel('Weight (kg)')
+plt.ylabel('Price (Euros)')
+plt.show()
+
+# Scatter plot for 'Screen Resolution Width' vs. 'Price_euros' to examine the impact of horizontal resolution on price.
+plt.figure(figsize=(12, 6))
+sns.scatterplot(x='Screen_Resolution_Width', y='Price_euros', data=df)
+plt.title('Screen Resolution Width vs. Price (Euros)')
+plt.xlabel('Screen Resolution Width')
+plt.ylabel('Price (Euros)')
+plt.show()
+
+### Analysis of Feature Relationships with Price
+
+Based on the correlation matrix and scatter plots:
+
+*   **Correlation Matrix:** The heatmap shows the correlation coefficients between all numerical features. We can observe the following significant correlations with `Price_euros`:
+    *   **Strong Positive Correlation:** `Ram` has the highest positive correlation with `Price_euros` (around 0.74), indicating that laptops with more RAM tend to be more expensive. `Cpu_Clock_Speed` also shows a notable positive correlation (around 0.42).
+    *   **Moderate Positive Correlation:** `Inches`, `Weight`, `Screen_Resolution_Width`, and `Screen_Resolution_Height` all show moderate positive correlations with `Price_euros`, suggesting that larger, heavier laptops with higher resolution screens are generally more expensive.
+    *   **Other Correlations:** The one-hot encoded categorical features (like `Company`, `TypeName`, `Screen_Resolution_Type`, `Cpu_Brand`, `Cpu_Type`, `Gpu_Brand`, and `OpSys_Type`) show varying levels of correlation, indicating that brand, type, and components significantly influence the price. For example, certain brands (like Apple and Razer) and types (like Workstation and Gaming) might be associated with higher prices, while others (like Netbook) might correlate with lower prices.
+
+*   **Ram (GB) vs. Price (Euros):** The scatter plot clearly shows a strong positive relationship between RAM and price. As the amount of RAM increases, the price of the laptop generally increases as well. The points are clustered at common RAM sizes (e.g., 4GB, 8GB, 16GB), with higher RAM capacities corresponding to higher price ranges.
+
+*   **Weight (kg) vs. Price (Euros):** The scatter plot indicates a general positive trend between weight and price, though the relationship is not as strong as with RAM. Heavier laptops tend to be more expensive, likely due to larger screens, more powerful components, or more robust build quality. However, there is a considerable spread in price for any given weight, suggesting other factors are also very influential.
+
+*   **Screen Resolution Width vs. Price (Euros):** The scatter plot shows a positive relationship between screen resolution width and price. Laptops with wider screens (and generally higher resolutions) are associated with higher prices. This is expected as higher resolution displays are often found in more premium and expensive laptops. There are distinct clusters of points corresponding to common screen widths, with higher widths generally reaching higher price points.
+
+In summary, the exploratory data analysis reveals that RAM, CPU clock speed, screen resolution, and weight are important numerical features influencing laptop price. Additionally, the categorical features related to brand, type, and components play a significant role, as indicated by their correlations in the heatmap.
+
+# This cell contains helper functions that were used in previous feature engineering steps but are not directly executed here.
+# They are kept for reference but commented out or have 'pass' to avoid re-execution.
+
+# Engineer 'Cpu'
+def extract_cpu_brand(cpu_string):
+    # ... code for extracting brand ...
+    pass # Added pass to fix indentation
+
+def extract_cpu_type(cpu_string):
+    # ... code for extracting type ...
+    pass # Added pass to fix indentation
+
+def extract_clock_speed(cpu_string):
+    match = re.search(r'(\d+\.?\d*)GHz', cpu_string)
+    return float(match.group(1)) if match else np.nan
+
+# The following lines are commented out as the feature engineering was done in previous cells.
+# df['Cpu_Clock_Speed'] = df['Cpu'].apply(extract_clock_speed)
+# df = df.drop('Cpu', axis=1)
+
+# Further feature engineering based on screen resolution and touchscreen.
+
+# Calculate PPI (Pixels Per Inch) using the Pythagorean theorem on screen dimensions and dividing by screen size in inches.
+df['PPI'] = ((df['Screen_Resolution_Width']**2 + df['Screen_Resolution_Height']**2)**0.5 / df['Inches']).astype(float)
+
+# Create a binary 'Touchscreen' column by checking if any of the 'Screen_Resolution_Type' columns related to touchscreen are true (1).
+touchscreen_cols = [col for col in df.columns if 'Touchscreen' in col]
+df['Touchscreen'] = df[touchscreen_cols].any(axis=1).astype(int)
+
+# Display the updated DataFrame with the new 'PPI' and 'Touchscreen' columns.
+display(df.head())
+
+# --- Final Phase: Model Building and Evaluation ---
+
+# Import necessary libraries for model building, including train/test split and linear regression.
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
+
+# Drop any remaining non-numeric columns and the 'laptop_ID' column before modeling.
+# 'Product' and 'Screen_Resolution_Dimension' are also dropped as they are not suitable for the model.
+df_final = df.drop(columns=['laptop_ID', 'Product', 'Screen_Resolution_Dimension'], errors='ignore')
+
+# Separate the features (X) and the target variable (y), which is 'Price_euros'.
+X = df_final.drop('Price_euros', axis=1)
+y = df_final['Price_euros']
+
+# Split the data into training and testing sets. 80% for training, 20% for testing.
+# 'random_state' is set for reproducibility.
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=41)
+
+# Print the sizes of the training and testing sets.
+print(f"Training set size: {X_train.shape[0]} samples")
+print(f"Testing set size: {X_test.shape[0]} samples")
+
+# Initialize the Linear Regression model.
+model = LinearRegression()
+
+# Train the model on the training data.
+model.fit(X_train, y_train)
+
+# Make predictions on the test data using the trained model.
+y_pred = model.predict(X_test)
+
+# --- Model Evaluation ---
+# Evaluate the model's performance using key regression metrics: MAE, MSE, RMSE, and R-squared.
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse) # Calculate Root Mean Squared Error
+r2 = r2_score(y_test, y_pred) # Calculate R-squared
+
+# Print the evaluation metrics.
+print("\nModel Evaluation Metrics:")
+print(f"Mean Absolute Error (MAE): {mae:.2f} euros")
+print(f"Mean Squared Error (MSE): {mse:.2f} euros^2")
+print(f"Root Mean Squared Error (RMSE): {rmse:.2f} euros")
+print(f"R-squared (R2): {r2:.2f}")
+
+# --- Interpretation of R-squared ---
+# Provide a brief explanation of what R-squared means in this context.
+print("\nInterpretation of R-squared (R2):")
+print("R-squared represents the proportion of the variance in the target variable (Price_euros)")
+print("that is predictable from the features. An R-squared of 0.85, for example, means that")
+print("85% of the variability in the price can be explained by our model's features.")
+print("A value closer to 1.0 is better.")
+
+# --- Final Phase: Using the Trained Model for Prediction ---
+
+# Import necessary libraries for creating a new data point and using the trained model.
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+
+# Recreate the data from your notebook to have the model available.
+# In a real application, the trained model would be saved and loaded.
+# For this example, we assume the previous training cell was run and 'model' and 'X_train' are in memory.
+
+# Let's create a new DataFrame for a single, new laptop with specific specifications.
+# This DataFrame must have the same columns as the training data (X_train) and in the same order.
+
+# Get the column names from the training data used to train the model.
+train_cols = X_train.columns
+
+# Create a dictionary for the new laptop data. Initialize all feature columns to 0.
+new_laptop_data = dict.fromkeys(train_cols, 0)
+
+# Fill in the specific values for the new laptop based on desired specifications.
+new_laptop_data['Inches'] = 15.6
+new_laptop_data['Ram'] = 16 # Example RAM size
+new_laptop_data['Weight'] = 2.2 # Example weight
+new_laptop_data['Screen_Resolution_Width'] = 1920 # Example screen width
+new_laptop_data['Screen_Resolution_Height'] = 1080 # Example screen height
+new_laptop_data['Cpu_Clock_Speed'] = 2.8 # Example CPU clock speed
+new_laptop_data['SSD_GB'] = 512 # Example SSD storage
+new_laptop_data['HDD_GB'] = 0 # Example HDD storage
+new_laptop_data['Flash_Storage_GB'] = 0 # Example Flash storage
+new_laptop_data['Touchscreen'] = 0 # Example: Not a touchscreen
+# Calculate PPI for the new laptop using the formula.
+new_laptop_data['PPI'] = ((new_laptop_data['Screen_Resolution_Width']**2 + new_laptop_data['Screen_Resolution_Height']**2)**0.5 / new_laptop_data['Inches'])
+
+# Set the appropriate one-hot encoded columns to 1 based on the new laptop's categorical features.
+# Example: Dell laptop
+new_laptop_data['Company_Dell'] = 1
+# Example: Notebook type
+new_laptop_data['TypeName_Notebook'] = 1
+# Example: Full HD screen resolution type
+new_laptop_data['Screen_Resolution_Type_Full HD'] = 1
+# Example: Intel Core i CPU brand and type
+new_laptop_data['Cpu_Brand_Intel'] = 1
+new_laptop_data['Cpu_Type_Core i'] = 1
+# Example: Nvidia GPU brand
+new_laptop_data['Gpu_Brand_Nvidia'] = 1
+# Example: Windows operating system type
+new_laptop_data['OpSys_Type_Windows'] = 1
+
+
+# Create a pandas DataFrame from the new laptop data dictionary.
+# It is crucial to specify the columns parameter using the training data columns to ensure the correct order.
+new_laptop_df = pd.DataFrame([new_laptop_data], columns=train_cols)
+
+
+# Use the trained linear regression model to predict the price of the new laptop.
+predicted_price = model.predict(new_laptop_df)
+
+# Print the predicted price, formatted to two decimal places.
+print(f"The predicted price of this new laptop is: {predicted_price[0]:.2f} euros")
+
+# Install the streamlit library using pip. The -q flag keeps the output quiet.
+!pip install -q streamlit
+
+# Install localtunnel using npm. This will be used to expose the Streamlit application running locally to the internet.
+!npm install -g localtunnel
+
+# Write the Python code for the Streamlit web application into a file named 'app.py'.
+# This code defines the layout and logic of the web app for predicting laptop prices.
+%%writefile app.py
+import streamlit as st
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+import re # Import re for the clock speed and screen resolution functions
+
+# Set the title of the Streamlit application.
+st.title("Sleek Price")
+
+# Add a markdown description for the application.
+st.markdown("""
+This web application predicts the price of a laptop based on its specifications.
+Input the details of the laptop below to get an estimated price in Euros.
+""")
+
+# Load the dataset and train the model.
+# In a real deployment, you would load a pre-trained model, but for this Colab example,
+# we replicate the necessary data loading and preprocessing.
+
+# Define the path to the dataset. UPDATE THIS IF NEEDED based on your file location.
+DATASET_PATH = "//content/drive/MyDrive/CPE 221 Lab/datasets/laptop_price.csv"
+
+try:
+    # Load the dataset
+    df = pd.read_csv(DATASET_PATH, encoding='latin-1')
+
+    # Store original categorical column values before preprocessing for use in Streamlit selectboxes.
+    original_companies = sorted(df['Company'].unique().tolist())
+    original_typenames = sorted(df['TypeName'].unique().tolist())
+    # Extract unique screen resolution types.
+    df['Screen_Resolution_Type'] = df['ScreenResolution'].apply(lambda x: ' '.join(x.split()[:-1]) if 'x' in x else x) # Handle cases with no resolution
+    original_screen_resolution_types = sorted(df['Screen_Resolution_Type'].unique().tolist())
+    # Extract unique CPU brands and types.
+    def extract_cpu_brand(cpu_string):
+        if 'Intel' in cpu_string: return 'Intel'
+        elif 'AMD' in cpu_string: return 'AMD'
+        elif 'Samsung' in cpu_string: return 'Samsung'
+        else: return 'Other'
+
+    def extract_cpu_type(cpu_string):
+        if 'Core i' in cpu_string: return 'Core i'
+        elif 'Ryzen' in cpu_string: return 'Ryzen'
+        elif 'Celeron' in cpu_string: return 'Celeron'
+        elif 'Pentium' in cpu_string: return 'Pentium'
+        elif 'Atom' in cpu_string: return 'Atom'
+        elif 'Xeon' in cpu_string: return 'Xeon'
+        elif 'FX' in cpu_string: return 'FX'
+        elif 'E-Series' in cpu_string: return 'E-Series'
+        elif 'A' in cpu_string: return 'A'
+        elif 'M' in cpu_string: return 'M'
+        else: return 'Other'
+    df['Cpu_Brand'] = df['Cpu'].apply(extract_cpu_brand)
+    df['Cpu_Type'] = df['Cpu'].apply(extract_cpu_type)
+    original_cpu_brands = sorted(df['Cpu_Brand'].unique().tolist())
+    original_cpu_types = sorted(df['Cpu_Type'].unique().tolist())
+    # Extract unique GPU brands.
+    def get_gpu_brand(gpu_string):
+        if 'Nvidia' in gpu_string: return 'Nvidia'
+        elif 'AMD' in gpu_string: return 'AMD'
+        elif 'Intel' in gpu_string: return 'Intel'
+        else: return 'Other'
+    df['Gpu_Brand'] = df['Gpu'].apply(get_gpu_brand)
+    original_gpu_brands = sorted(df['Gpu_Brand'].unique().tolist())
+    # Extract unique OS types.
+    def get_os_type(os_string):
+        if 'Windows' in os_string: return 'Windows'
+        elif 'Mac' in os_string: return 'Mac'
+        elif 'Linux' in os_string: return 'Linux'
+        else: return 'Other'
+    df['OpSys_Type'] = df['OpSys'].apply(get_os_type)
+    original_opsys_types = sorted(df['OpSys_Type'].unique().tolist())
+
+
+    # Replicate the preprocessing steps from the notebook to prepare the data for training.
+    df['Weight'] = df['Weight'].str.replace('kg', '').astype(float)
+    df['Ram'] = df['Ram'].str.replace('GB', '').astype(int)
+
+    # Feature Engineering - ScreenResolution
+    df[['Screen_Resolution_Width', 'Screen_Resolution_Height']] = df['ScreenResolution'].str.extract(r'(\d+)x(\d+)').astype(int)
+    df['PPI'] = ((df['Screen_Resolution_Width']**2 + df['Screen_Resolution_Height']**2)**0.5 / df['Inches']).astype(float)
+    # Create 'Touchscreen' column.
+    touchscreen_cols = [col for col in df.columns if 'Touchscreen' in col]
+    df['Touchscreen'] = df[touchscreen_cols].any(axis=1).astype(int)
+
+    # Feature Engineering - Cpu (Clock Speed)
+    def extract_clock_speed(cpu_string):
+        match = re.search(r'(\d+\.?\d*)GHz', cpu_string)
+        return float(match.group(1)) if match else np.nan
+
+    df['Cpu_Clock_Speed'] = df['Cpu'].apply(extract_clock_speed)
+
+    # Feature Engineering - Memory (Storage Types)
+    def parse_storage(storage_string):
+        ssd_gb = 0
+        hdd_gb = 0
+        flash_gb = 0
+        storage_types = storage_string.split('+')
+        for item in storage_types:
+            size_gb = 0
+            match = re.search(r'(\d+)\s*(GB|TB)', item)
+            if match:
+                size = int(match.group(1))
+                unit = match.group(2)
+                size_gb = size * 1024 if unit == 'TB' else size
+            if 'SSD' in item: ssd_gb = size_gb
+            if 'HDD' in item: hdd_gb = size_gb
+            if 'Flash' in item: flash_gb = size_gb
+        return pd.Series([ssd_gb, hdd_gb, flash_gb])
+
+    df[['SSD_GB', 'HDD_GB', 'Flash_Storage_GB']] = df['Memory'].apply(parse_storage)
+
+    # Drop original columns that were engineered or are not needed for the model.
+    df = df.drop(columns=['ScreenResolution', 'Cpu', 'Memory', 'Gpu', 'OpSys', 'Product', 'Screen_Resolution_Dimension', 'laptop_ID'], errors='ignore')
+
+    # Perform one-hot encoding on categorical features after extracting original values.
+    categorical_cols = ['Company', 'TypeName', 'Screen_Resolution_Type', 'Cpu_Brand', 'Cpu_Type', 'Gpu_Brand', 'OpSys_Type']
+    df = pd.get_dummies(df, columns=categorical_cols, drop_first=True, dtype=int)
+
+    # Separate features (X) and target variable (y) for training.
+    X = df.drop('Price_euros', axis=1)
+    y = df['Price_euros']
+
+    # Train the Linear Regression model.
+    model = LinearRegression()
+    model.fit(X, y)
+
+    st.success("Model trained successfully!")
+
+    # Define the columns for the new laptop data based on the trained model's features.
+    # This is crucial to ensure the input data for prediction has the same structure as the training data.
+    trained_columns = X.columns.tolist()
+
+except FileNotFoundError:
+    st.error(f"Error: Dataset not found at {DATASET_PATH}. Please ensure the file is in the correct location.")
+    st.stop() # Stop the app if the dataset is not found
+except Exception as e:
+    st.error(f"An error occurred during data loading or preprocessing: {e}")
+    st.stop() # Stop the app if an error occurs
+
+
+# --- Streamlit UI for User Input ---
+
+st.header("Enter Laptop Specifications")
+
+# Input fields for numerical features using Streamlit widgets.
+inches = st.number_input("Screen Size (Inches)", min_value=5.0, max_value=30.0, value=15.6, step=0.1)
+# Use a selectbox for RAM as it has specific common values.
+ram = st.selectbox("RAM (GB)", ['None'] + [2, 4, 6, 8, 12, 16, 24, 32, 64])
+weight = st.number_input("Weight (kg)", min_value=0.1, max_value=10.0, value=2.0, step=0.1)
+cpu_clock_speed = st.number_input("CPU Clock Speed (GHz)", min_value=0.5, max_value=5.0, value=2.5, step=0.1)
+
+# Storage Input using selectboxes for amount and type.
+storage_amount = st.selectbox("Storage Amount (GB)", ['None'] + [8, 16, 32, 64, 128, 256, 512, 1024, 2048])
+storage_type = st.selectbox("Storage Type", ['None', 'SSD', 'HDD', 'Flash Storage'])
+
+# Initialize storage sizes based on user selection.
+ssd_gb = 0
+hdd_gb = 0
+flash_storage_gb = 0
+
+if storage_amount != 'None':
+    if storage_type == 'SSD':
+        ssd_gb = int(storage_amount)
+    elif storage_type == 'HDD':
+        hdd_gb = int(storage_amount)
+    elif storage_type == 'Flash Storage':
+        flash_storage_gb = int(storage_amount)
+
+
+# Screen Resolution Input using a text input.
+screen_resolution = st.text_input("Screen Resolution (e.g., 1920x1080)", value="1920x1080")
+
+# Calculate PPI from the text input for screen resolution.
+screen_width = 0
+screen_height = 0
+ppi = 0
+match = re.search(r'(\d+)x(\d+)', screen_resolution)
+if match:
+    try:
+        screen_width = int(match.group(1))
+        screen_height = int(match.group(2))
+        if inches > 0:
+            ppi = ((screen_width**2 + screen_height**2)**0.5 / inches)
+    except ValueError:
+        st.warning("Invalid screen resolution format. Please use the format 'WidthxHeight' (e.g., 1920x1080).")
+
+
+# Touchscreen input using a selectbox.
+touchscreen = st.selectbox("Touchscreen", ["No", "Yes"])
+touchscreen_int = 1 if touchscreen == "Yes" else 0 # Convert "Yes"/"No" to 1/0
+
+# Input fields for categorical features using selectboxes populated with unique values from the dataset.
+company = st.selectbox("Company", ['None'] + original_companies)
+typename = st.selectbox("Type Name", ['None'] + original_typenames)
+screen_resolution_type = st.selectbox("Screen Resolution Type", ['None'] + original_screen_resolution_types)
+cpu_brand = st.selectbox("CPU Brand", ['None'] + original_cpu_brands)
+cpu_type = st.selectbox("CPU Type", ['None'] + original_cpu_types)
+
+# Optional: If CPU Type is 'Core i', offer specific options (for UI only, not used in current model features).
+if cpu_type == 'Core i':
+    core_i_type = st.selectbox("Intel Core i Series", ['None', 'i3', 'i5', 'i7', 'i9'])
+    # Note: We are not using the specific i3/i5/i7/i9 information for prediction
+    # in this current model as the feature engineering only created a 'Core i' category.
+    # To use this, we would need to modify the feature engineering and model training
+    # to include these as separate features. This is a simplification for the app UI.
+
+
+gpu_brand = st.selectbox("GPU Brand", ['None'] + original_gpu_brands)
+opsys_type = st.selectbox("Operating System Type", ['None'] + original_opsys_types)
+
+
+# Predict button to trigger the price prediction.
+if st.button("Predict Price"):
+    # Create a dictionary for the new laptop data, initialized with zeros for all trained columns.
+    new_laptop_data = dict.fromkeys(trained_columns, 0)
+
+    # Fill in the numerical features with the user's input.
+    new_laptop_data['Inches'] = inches
+    new_laptop_data['Ram'] = ram if ram != 'None' else 0 # Convert 'None' to 0 or handle appropriately
+    new_laptop_data['Weight'] = weight
+    new_laptop_data['Cpu_Clock_Speed'] = cpu_clock_speed
+    new_laptop_data['SSD_GB'] = ssd_gb
+    new_laptop_data['HDD_GB'] = hdd_gb
+    new_laptop_data['Flash_Storage_GB'] = flash_storage_gb
+    new_laptop_data['Screen_Resolution_Width'] = screen_width
+    new_laptop_data['Screen_Resolution_Height'] = screen_height
+    new_laptop_data['Touchscreen'] = touchscreen_int
+    new_laptop_data['PPI'] = ppi # Use the calculated PPI
+
+    # Set the appropriate one-hot encoded columns to 1 based on the user's categorical selections.
+    # Check if the selected category exists as a column in the trained data before setting to 1.
+    if company != 'None':
+        company_col = f'Company_{company}'
+        if company_col in new_laptop_data:
+            new_laptop_data[company_col] = 1
+
+    if typename != 'None':
+        typename_col = f'TypeName_{typename}'
+        if typename_col in new_laptop_data:
+            new_laptop_data[typename_col] = 1
+
+    if screen_resolution_type != 'None':
+        screen_resolution_type_col = f'Screen_Resolution_Type_{screen_resolution_type}'
+        if screen_resolution_type_col in new_laptop_data:
+            new_laptop_data[screen_resolution_type_col] = 1
+
+    if cpu_brand != 'None':
+        cpu_brand_col = f'Cpu_Brand_{cpu_brand}'
+        if cpu_brand_col in new_laptop_data:
+            new_laptop_data[cpu_brand_col] = 1
+
+    if cpu_type != 'None':
+        cpu_type_col = f'Cpu_Type_{cpu_type}'
+        if cpu_type_col in new_laptop_data:
+            new_laptop_data[cpu_type_col] = 1
+
+    if gpu_brand != 'None':
+        gpu_brand_col = f'Gpu_Brand_{gpu_brand}'
+        if gpu_brand_col in new_laptop_data:
+            new_laptop_data[gpu_brand_col] = 1
+
+    if opsys_type != 'None':
+        opsys_type_col = f'OpSys_Type_{opsys_type}'
+        if opsys_type_col in new_laptop_data:
+            new_laptop_data[opsys_type_col] = 1
+
+
+    # Create a DataFrame for the new laptop data.
+    # Ensure the columns are in the same order as the training data using the 'columns=trained_columns' parameter.
+    new_laptop_df = pd.DataFrame([new_laptop_data], columns=trained_columns)
+
+    # Use the trained model to predict the price based on the new laptop's features.
+    predicted_price = model.predict(new_laptop_df)
+
+    # Display the predicted price to the user.
+    st.subheader("Predicted Price")
+    st.write(f"The predicted price of this laptop is: **{predicted_price[0]:.2f} euros**")
+
+# Add a disclaimer at the end of the app.
+st.markdown("""
+---
+**Disclaimer:** This prediction is based on a linear regression model trained on the provided dataset. The actual price may vary due to various factors not included in this model, such as market fluctuations, specific configurations, and retailer pricing.
+""")
+
+# Run the Streamlit application in the background and redirect the output to a log file.
+!streamlit run app.py &>/content/logs.txt &
+# Use localtunnel to create a public URL for the Streamlit app running on port 8501.
+!npx localtunnel --port 8501
+
+# Get the public IP address of the Colab instance. This can be useful for debugging networking issues.
+!curl ipv4.icanhazip.com
+
+### Summary of Findings and Model Results (For a Non-Technical Audience)
+
+We analyzed a dataset of laptop specifications and prices to understand what factors influence how much a laptop costs and to build a tool that can predict the price of a new laptop.
+
+**What We Found (Exploratory Data Analysis - EDA):**
+
+*   We looked at the data to see if there were any missing pieces or unusual values. Fortunately, there were no missing values! We did find some laptops that were significantly more expensive or heavier than most, but after looking at the data, they seemed to be genuine high-end or specialized models, so we kept most of them in our analysis.
+*   We explored how different features like the amount of RAM (memory), weight, and screen resolution relate to the price. We saw clear trends:
+    *   **More RAM = Higher Price:** Laptops with more memory generally cost more. This makes sense, as more RAM usually means better performance.
+    *   **Heavier Laptops = Often Higher Price:** There was a general tendency for heavier laptops to be more expensive, possibly because they have larger screens or more powerful components.
+    *   **Higher Screen Resolution = Higher Price:** Laptops with sharper and more detailed screens also tended to have higher price tags.
+*   We also saw that the brand of the laptop, its type (like gaming or ultrabook), the type of screen (like touchscreen or retina display), and the type of processor (CPU) and graphics card (GPU) all play a role in determining the price.
+
+**How Our Price Predictor Works (Model Building and Evaluation):**
+
+*   We used a statistical technique called Linear Regression to build a model that learns the relationship between all the laptop features and its price.
+*   We tested our model on a separate set of data it had never seen before to see how well it predicts prices.
+*   The model was able to explain about **80%** of the variation in laptop prices based on the features we used. This is a good result, meaning our model is quite accurate in predicting prices based on the provided information.
+*   On average, the model's predictions were off by about **238.65 euros** (Mean Absolute Error). The Root Mean Squared Error (RMSE) was about **331.84 euros**, which gives us a slightly higher measure of the typical error, as it gives more weight to larger mistakes.
+
+**In Simple Terms:**
+
+Our analysis shows that the key factors driving laptop prices are its technical specifications like RAM, screen quality, and processing power, as well as the brand and type of laptop. We built a predictor that can estimate a laptop's price with a good degree of accuracy based on these characteristics. While the prediction won't be perfect for every single laptop (there's always some variation the model can't capture), it provides a strong estimate based on the patterns in the data.
+
+### Report: Sleek Price Laptop Price Prediction Application
+
+This report provides an overview of the Sleek Price web application, a tool designed to predict laptop prices based on user-provided specifications.
+
+**What the Application Does:**
+
+The Sleek Price application utilizes a Linear Regression model trained on a dataset of laptop prices and specifications to provide an estimated price in Euros for a new laptop. Users can input various details about a laptop, such as screen size, RAM, weight, storage type and amount, screen resolution, touchscreen capability, company, type, CPU details (brand, type, clock speed), GPU brand, and operating system type. The application then uses the trained model to predict the likely price of a laptop with those specifications.
+
+**How to Use the Deployed Application:**
+
+1.  **Access the Application:** The application is deployed using Streamlit and exposed via localtunnel. You can access the application by clicking on the public URL provided in the output of the last code cell (`!npx localtunnel --port 8501`). The URL will look something like `https://your-random-subdomain.loca.lt`.
+2.  **Input Laptop Specifications:** On the web page, you will see various input fields for laptop specifications. Enter the details of the laptop you want to get a price prediction for. Use the dropdown menus and text fields to provide the specifications.
+3.  **Click "Predict Price":** Once you have entered all the details, click the "Predict Price" button at the bottom of the input section.
+4.  **View the Predicted Price:** The predicted price in Euros will be displayed in a dedicated section below the button.
+
+**System Requirements:**
+
+To run this application in a Colab environment, you will need:
+
+*   **Google Colab Environment:** The notebook and application are designed to run within Google Colab.
+*   **Internet Connection:** Required to access the Colab environment, install libraries, and use localtunnel.
+*   **Access to Google Drive:** The application loads the dataset from your Google Drive. Ensure the dataset file (`laptop_price.csv`) is located at the specified path (`//content/drive/MyDrive/CPE 221 Lab/datasets/laptop_price.csv`) in the `app.py` file.
+*   **Sufficient RAM and Disk Space:** The Colab environment should provide enough resources for data loading, preprocessing, model training, and running the Streamlit application.
+
+**Other Recommended Settings for Smooth Running:**
+
+*   **Runtime Type:** Use a Python 3 runtime with a GPU or TPU acceleration if available, especially for potentially larger datasets or more complex models in the future. For this dataset and model, a standard CPU runtime is sufficient.
+*   **Keep the Colab Tab Open:** Since the Streamlit application is running locally within the Colab environment and exposed via localtunnel, you need to keep the Colab notebook tab open and connected to the runtime for the application to remain accessible. If the Colab runtime disconnects, the localtunnel session will also terminate, and the public URL will no longer work.
+*   **Check the localtunnel URL:** The localtunnel URL is temporary and changes each time you run the `npx localtunnel --port 8501` command. Make sure to use the most recently generated URL.
+*   **Monitor Logs:** You can check the `logs.txt` file (created by the `!streamlit run app.py &>/content/logs.txt &` command) in the Colab file explorer for any errors or output from the Streamlit application.
+
+This application serves as a practical example of building and deploying a simple machine learning model for price prediction within a Colab environment.
+
+### Report: Sleek Price Laptop Price Prediction Application
+
+This report provides an overview of the Sleek Price web application, a tool designed to predict laptop prices based on user-provided specifications.
+
+**What the Application Does:**
+
+The Sleek Price application utilizes a Linear Regression model trained on a dataset of laptop prices and specifications to provide an estimated price in Euros for a new laptop. Users can input various details about a laptop, such as screen size, RAM, weight, storage type and amount, screen resolution, touchscreen capability, company, type, CPU details (brand, type, clock speed), GPU brand, and operating system type. The application then uses the trained model to predict the likely price of a laptop with those specifications.
+
+**How to Use the Deployed Application:**
+
+1.  **Access the Application (Colab Deployment):** The application is deployed using Streamlit and exposed via localtunnel within this Colab notebook. You can access the application by clicking on the public URL provided in the output of the last code cell (`!npx localtunnel --port 8501`). The URL will look something like `https://your-random-subdomain.loca.lt`.
+2.  **Input Laptop Specifications:** On the web page, you will see various input fields for laptop specifications. Enter the details of the laptop you want to get a price prediction for. Use the dropdown menus and text fields to provide the specifications.
+3.  **Click "Predict Price":** Once you have entered all the details, click the "Predict Price" button at the bottom of the input section.
+4.  **View the Predicted Price:** The predicted price in Euros will be displayed in a dedicated section below the button.
+
+**How to Deploy the Application to Streamlit Cloud via GitHub:**
+
+For a more permanent and shareable deployment, you can deploy the Streamlit application to Streamlit Cloud using GitHub.
+
+1.  **Save the Notebook to GitHub:** Ensure your Colab notebook is saved to a GitHub repository. You can do this by going to File -> Save a copy to GitHub.
+2.  **Ensure `app.py` is in the Repository:** Make sure the `app.py` file, which contains the Streamlit application code, is also present in the same GitHub repository. You might need to manually upload it or write it to the repository from Colab.
+3.  **Go to Streamlit Cloud:** Navigate to the Streamlit Cloud website (https://streamlit.io/cloud).
+4.  **Log In or Sign Up:** Log in to your Streamlit Cloud account or sign up for a free account.
+5.  **Deploy a new app:** Click on the "New app" button.
+6.  **Connect to your GitHub Repository:** Select your GitHub repository containing the `app.py` file.
+7.  **Configure Deployment:**
+    *   Set the "Branch" to the branch in your repository where the code is located.
+    *   Set the "Main file path" to the path of the `app.py` file within your repository (e.g., `app.py` if it's in the root directory, or `your_folder/app.py` if it's in a subfolder).
+    *   Specify any "Advanced settings" if needed (e.g., Python version, requirements file). You will likely need a `requirements.txt` file in your repository listing the necessary libraries (`pandas`, `numpy`, `sklearn`, `streamlit`, `re`).
+8.  **Deploy:** Click the "Deploy!" button. Streamlit Cloud will build and deploy your application, providing you with a public URL.
+
+**System Requirements (for Colab Deployment):**
+
+To run this application in a Colab environment, you will need:
+
+*   **Google Colab Environment:** The notebook and application are designed to run within Google Colab.
+*   **Internet Connection:** Required to access the Colab environment, install libraries, and use localtunnel.
+*   **Access to Google Drive:** The application loads the dataset from your Google Drive. Ensure the dataset file (`laptop_price.csv`) is located at the specified path (`//content/drive/MyDrive/CPE 221 Lab/datasets/laptop_price.csv`) in the `app.py` file.
+*   **Sufficient RAM and Disk Space:** The Colab environment should provide enough resources for data loading, preprocessing, model training, and running the Streamlit application.
+
+**Other Recommended Settings for Smooth Running (for Colab Deployment):**
+
+*   **Runtime Type:** Use a Python 3 runtime with a GPU or TPU acceleration if available, especially for potentially larger datasets or more complex models in the future. For this dataset and model, a standard CPU runtime is sufficient.
+*   **Keep the Colab Tab Open:** Since the Streamlit application is running locally within the Colab environment and exposed via localtunnel, you need to keep the Colab notebook tab open and connected to the runtime for the application to remain accessible. If the Colab runtime disconnects, the localtunnel session will also terminate, and the public URL will no longer work.
+*   **Check the localtunnel URL:** The localtunnel URL is temporary and changes each time you run the `npx localtunnel --port 8501` command. Make sure to use the most recently generated URL.
+*   **Monitor Logs:** You can check the `logs.txt` file (created by the `!streamlit run app.py &>/content/logs.txt &` command) in the Colab file explorer for any errors or output from the Streamlit application.
+
+This application serves as a practical example of building and deploying a simple machine learning model for price prediction within a Colab environment, with options for more robust deployment via Streamlit Cloud.
+
+### Report: Sleek Price Laptop Price Prediction Application
+
+This report provides an overview of the Sleek Price web application, a tool designed to predict laptop prices based on user-provided specifications.
+
+**What the Application Does:**
+
+The Sleek Price application utilizes a Linear Regression model trained on a dataset of laptop prices and specifications to provide an estimated price in Euros for a new laptop. Users can input various details about a laptop, such as screen size, RAM, weight, storage type and amount, screen resolution, touchscreen capability, company, type, CPU details (brand, type, clock speed), GPU brand, and operating system type. The application then uses the trained model to predict the likely price of a laptop with those specifications.
+
+**How to Use the Deployed Application (for End Users):**
+
+1.  **Access the Application:** The application is deployed and accessible via a public URL. If deployed through Streamlit Cloud, you will receive a permanent URL. If deployed temporarily via localtunnel from a Colab notebook, you will use the localtunnel URL generated in the notebook output. Click on this URL to open the application in your web browser.
+2.  **Input Laptop Specifications:** On the web page, you will see various input fields for laptop specifications. Enter the details of the laptop you want to get a price prediction for. Use the dropdown menus and text fields to provide the specifications.
+3.  **Click "Predict Price":** Once you have entered all the details, click the "Predict Price" button at the bottom of the input section.
+4.  **View the Predicted Price:** The predicted price in Euros will be displayed in a dedicated section below the button.
+
+**Requirements for End Users:**
+
+*   **Web Browser:** The end user needs a standard web browser (like Chrome, Firefox, Safari, Edge, etc.) to access the application URL.
+*   **Internet Connection:** A stable internet connection is required to access and interact with the web application.
+*   **Laptop Specifications:** The user needs to know the specifications of the laptop they want to get a price prediction for to input into the application.
+
+**How to Deploy the Application to Streamlit Cloud via GitHub (for Developers):**
+
+For a more permanent and shareable deployment, you can deploy the Streamlit application to Streamlit Cloud using GitHub.
+
+1.  **Save the Notebook to GitHub:** Ensure your Colab notebook is saved to a GitHub repository. You can do this by going to File -> Save a copy to GitHub.
+2.  **Ensure `app.py` is in the Repository:** Make sure the `app.py` file, which contains the Streamlit application code, is also present in the same GitHub repository. You might need to manually upload it or write it to the repository from Colab.
+3.  **Go to Streamlit Cloud:** Navigate to the Streamlit Cloud website (https://streamlit.io/cloud).
+4.  **Log In or Sign Up:** Log in to your Streamlit Cloud account or sign up for a free account.
+5.  **Deploy a new app:** Click on the "New app" button.
+6.  **Connect to your GitHub Repository:** Select your GitHub repository containing the `app.py` file.
+7.  **Configure Deployment:**
+    *   Set the "Branch" to the branch in your repository where the code is located.
+    *   Set the "Main file path" to the path of the `app.py` file within your repository (e.g., `app.py` if it's in the root directory, or `your_folder/app.py` if it's in a subfolder).
+    *   Specify any "Advanced settings" if needed (e.g., Python version, requirements file). You will likely need a `requirements.txt` file in your repository listing the necessary libraries (`pandas`, `numpy`, `sklearn`, `streamlit`, `re`).
+8.  **Deploy:** Click the "Deploy!" button. Streamlit Cloud will build and deploy your application, providing you with a public URL.
+
+**System Requirements (for Colab Deployment - for Developers):**
+
+To run and deploy this application *from* a Colab environment (for temporary localtunnel deployment), you will need:
+
+*   **Google Colab Environment:** The notebook and application are designed to run within Google Colab.
+*   **Internet Connection:** Required to access the Colab environment, install libraries, and use localtunnel.
+*   **Access to Google Drive:** The application loads the dataset from your Google Drive. Ensure the dataset file (`laptop_price.csv`) is located at the specified path (`//content/drive/MyDrive/CPE 221 Lab/datasets/laptop_price.csv`) in the `app.py` file.
+*   **Sufficient RAM and Disk Space:** The Colab environment should provide enough resources for data loading, preprocessing, model training, and running the Streamlit application.
+
+**Other Recommended Settings for Smooth Running (for Colab Deployment - for Developers):**
+
+*   **Runtime Type:** Use a Python 3 runtime with a GPU or TPU acceleration if available, especially for potentially larger datasets or more complex models in the future. For this dataset and model, a standard CPU runtime is sufficient.
+*   **Keep the Colab Tab Open:** Since the Streamlit application is running locally within the Colab environment and exposed via localtunnel, you need to keep the Colab notebook tab open and connected to the runtime for the application to remain accessible. If the Colab runtime disconnects, the localtunnel session will also terminate, and the public URL will no longer work.
+*   **Check the localtunnel URL:** The localtunnel URL is temporary and changes each time you run the `npx localtunnel --port 8501` command. Make sure to use the most recently generated URL.
+*   **Monitor Logs:** You can check the `logs.txt` file (created by the `!streamlit run app.py &>/content/logs.txt &` command) in the Colab file explorer for any errors or output from the Streamlit application.
+
+This application serves as a practical example of building and deploying a simple machine learning model for price prediction within a Colab environment, with options for more robust deployment via Streamlit Cloud.
