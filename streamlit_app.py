@@ -162,10 +162,6 @@ model, trained_columns, original_values = load_data_and_train_model()
 # --- 3. Streamlit UI for User Input ---
 st.header("Enter Laptop Specifications")
 
-
-[Image of a person typing on a laptop]
-
-
 # Input fields for numerical features
 cols1 = st.columns(3)
 with cols1[0]:
