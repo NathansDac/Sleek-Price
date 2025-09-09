@@ -27,3 +27,11 @@ Feature Engineering - Screen Resolution:
 
 Changes: Extracted width and height from the ScreenResolution string using regex. Calculated PPI (Pixels Per Inch). Created a binary Touchscreen column based on the presence of 'Touchscreen' in resolution types. Extracted the Screen_Resolution_Type. Dropped the original ScreenResolution column.
 Explanation and Justification: The original ScreenResolution column contained multiple pieces of information in a single string. Extracting width, height, and calculating PPI provides numerical features that are likely better predictors of price than the original string. Creating a binary Touchscreen feature simplifies this information for the model. Dropping the original column removes redundant information.
+Feature Engineering - CPU:
+
+Changes: Created functions to extract Cpu_Brand, Cpu_Type, and Cpu_Clock_Speed from the Cpu string using keyword matching and regex. Applied these functions to create new columns. Dropped the original Cpu column.
+Explanation and Justification: Similar to screen resolution, the Cpu column contained multiple attributes. Separating the brand, type, and clock speed allows the model to learn the individual impact of these factors on price. Dropping the original column removes redundant information.
+Feature Engineering - Memory:
+
+Changes: Created a function to parse the Memory string and extract the sizes for SSD, HDD, and Flash Storage. Applied the function to create new columns (SSD_GB, HDD_GB, Flash_Storage_GB). Dropped the original Memory column.
+Explanation and Justification: The Memory column combined storage type and size. Separating these into distinct numerical features (size in GB for each type) provides the model with more structured information about the storage configuration. Dropping the original column removes redundant information.
