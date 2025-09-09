@@ -1,0 +1,33 @@
+# --- Phase 2: Exploratory Data Analysis (EDA) ---
+
+# Plot a correlation matrix to see how all numerical features relate to each other and to 'Price_euros'.
+# A heatmap is used to visualize the correlation coefficients.
+plt.figure(figsize=(15, 10))
+sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', fmt=".2f") # Calculate correlations and plot heatmap
+plt.title('Correlation Matrix of Features')
+plt.show()
+
+# Visualize the relationship between key features and 'Price_euros' using scatter plots.
+# Scatter plot for 'Ram' vs. 'Price_euros' - 'Ram' is expected to be a strong predictor.
+plt.figure(figsize=(12, 6))
+sns.scatterplot(x='Ram', y='Price_euros', data=df)
+plt.title('Ram (GB) vs. Price (Euros)')
+plt.xlabel('Ram (GB)')
+plt.ylabel('Price (Euros)')
+plt.show()
+
+# Scatter plot for 'Weight' vs. 'Price_euros' to see their relationship.
+plt.figure(figsize=(12, 6))
+sns.scatterplot(x='Weight', y='Price_euros', data=df)
+plt.title('Weight (kg) vs. Price (Euros)')
+plt.xlabel('Weight (kg)')
+plt.ylabel('Price (Euros)')
+plt.show()
+
+# Scatter plot for 'Screen Resolution Width' vs. 'Price_euros' to examine the impact of horizontal resolution on price.
+plt.figure(figsize=(12, 6))
+sns.scatterplot(x='Screen_Resolution_Width', y='Price_euros', data=df)
+plt.title('Screen Resolution Width vs. Price (Euros)')
+plt.xlabel('Screen Resolution Width')
+plt.ylabel('Price (Euros)')
+plt.show()
