@@ -1,0 +1,61 @@
+# --- Final Phase: Using the Trained Model for Prediction ---
+
+# Import necessary libraries for creating a new data point and using the trained model.
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+
+# Recreate the data from your notebook to have the model available.
+# In a real application, the trained model would be saved and loaded.
+# For this example, we assume the previous training cell was run and 'model' and 'X_train' are in memory.
+
+# Let's create a new DataFrame for a single, new laptop with specific specifications.
+# This DataFrame must have the same columns as the training data (X_train) and in the same order.
+
+# Get the column names from the training data used to train the model.
+train_cols = X_train.columns
+
+# Create a dictionary for the new laptop data. Initialize all feature columns to 0.
+new_laptop_data = dict.fromkeys(train_cols, 0)
+
+# Fill in the specific values for the new laptop based on desired specifications.
+new_laptop_data['Inches'] = 15.6
+new_laptop_data['Ram'] = 16 # Example RAM size
+new_laptop_data['Weight'] = 2.2 # Example weight
+new_laptop_data['Screen_Resolution_Width'] = 1920 # Example screen width
+new_laptop_data['Screen_Resolution_Height'] = 1080 # Example screen height
+new_laptop_data['Cpu_Clock_Speed'] = 2.8 # Example CPU clock speed
+new_laptop_data['SSD_GB'] = 512 # Example SSD storage
+new_laptop_data['HDD_GB'] = 0 # Example HDD storage
+new_laptop_data['Flash_Storage_GB'] = 0 # Example Flash storage
+new_laptop_data['Touchscreen'] = 0 # Example: Not a touchscreen
+# Calculate PPI for the new laptop using the formula.
+new_laptop_data['PPI'] = ((new_laptop_data['Screen_Resolution_Width']**2 + new_laptop_data['Screen_Resolution_Height']**2)**0.5 / new_laptop_data['Inches'])
+
+# Set the appropriate one-hot encoded columns to 1 based on the new laptop's categorical features.
+# Example: Dell laptop
+new_laptop_data['Company_Dell'] = 1
+# Example: Notebook type
+new_laptop_data['TypeName_Notebook'] = 1
+# Example: Full HD screen resolution type
+new_laptop_data['Screen_Resolution_Type_Full HD'] = 1
+# Example: Intel Core i CPU brand and type
+new_laptop_data['Cpu_Brand_Intel'] = 1
+new_laptop_data['Cpu_Type_Core i'] = 1
+# Example: Nvidia GPU brand
+new_laptop_data['Gpu_Brand_Nvidia'] = 1
+# Example: Windows operating system type
+new_laptop_data['OpSys_Type_Windows'] = 1
+
+
+# Create a pandas DataFrame from the new laptop data dictionary.
+# It is crucial to specify the columns parameter using the training data columns to ensure the correct order.
+new_laptop_df = pd.DataFrame([new_laptop_data], columns=train_cols)
+
+
+# Use the trained linear regression model to predict the price of the new laptop.
+predicted_price = model.predict(new_laptop_df)
+
+# Print the predicted price, formatted to two decimal places.
+print(f"The predicted price of this new laptop is: {predicted_price[0]:.2f} euros")
