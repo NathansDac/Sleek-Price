@@ -1,0 +1,30 @@
+# This cell contains helper functions that were used in previous feature engineering steps but are not directly executed here.
+# They are kept for reference but commented out or have 'pass' to avoid re-execution.
+
+# Engineer 'Cpu'
+def extract_cpu_brand(cpu_string):
+    # ... code for extracting brand ...
+    pass # Added pass to fix indentation
+
+def extract_cpu_type(cpu_string):
+    # ... code for extracting type ...
+    pass # Added pass to fix indentation
+
+def extract_clock_speed(cpu_string):
+    match = re.search(r'(\d+\.?\d*)GHz', cpu_string)
+    return float(match.group(1)) if match else np.nan
+
+# The following lines are commented out as the feature engineering was done in previous cells.
+# df['Cpu_Clock_Speed'] = df['Cpu'].apply(extract_clock_speed)
+# df = df.drop('Cpu', axis=1)
+# Further feature engineering based on screen resolution and touchscreen.
+
+# Calculate PPI (Pixels Per Inch) using the Pythagorean theorem on screen dimensions and dividing by screen size in inches.
+df['PPI'] = ((df['Screen_Resolution_Width']**2 + df['Screen_Resolution_Height']**2)**0.5 / df['Inches']).astype(float)
+
+# Create a binary 'Touchscreen' column by checking if any of the 'Screen_Resolution_Type' columns related to touchscreen are true (1).
+touchscreen_cols = [col for col in df.columns if 'Touchscreen' in col]
+df['Touchscreen'] = df[touchscreen_cols].any(axis=1).astype(int)
+
+# Display the updated DataFrame with the new 'PPI' and 'Touchscreen' columns.
+display(df.head())
