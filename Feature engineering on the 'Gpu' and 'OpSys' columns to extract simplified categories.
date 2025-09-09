@@ -1,0 +1,60 @@
+# Feature engineering on the 'Gpu' and 'OpSys' columns to extract simplified categories.
+
+# --- Corrected code for 'Gpu' ---
+
+# Define a function to extract the main GPU brand.
+def get_gpu_brand(gpu_string):
+    """
+    Extracts the main GPU brand from a string.
+    """
+    if 'Nvidia' in gpu_string:
+        return 'Nvidia'
+    elif 'AMD' in gpu_string:
+        return 'AMD'
+    elif 'Intel' in gpu_string:
+        return 'Intel'
+    else:
+        return 'Other'
+
+# Create the new 'Gpu_Brand' column by applying the function.
+df['Gpu_Brand'] = df['Gpu'].apply(get_gpu_brand)
+
+# One-hot encode the new, simplified 'Gpu_Brand' column.
+df = pd.get_dummies(df, columns=['Gpu_Brand'], drop_first=True, dtype=int)
+
+# Drop the original 'Gpu' column as it's no longer needed.
+df = df.drop('Gpu', axis=1)
+
+# --- Corrected code for 'OpSys' ---
+
+# Define a function to extract the general operating system type.
+def get_os_type(os_string):
+    """
+    Extracts the general operating system type.
+    """
+    if 'Windows' in os_string:
+        return 'Windows'
+    elif 'Mac' in os_string:
+        return 'Mac'
+    elif 'Linux' in os_string:
+        return 'Linux'
+    else:
+        return 'Other'
+
+# Create the new 'OpSys_Type' column by applying the function.
+df['OpSys_Type'] = df['OpSys'].apply(get_os_type)
+
+# One-hot encode the new, simplified 'OpSys_Type' column.
+df = pd.get_dummies(df, columns=['OpSys_Type'], drop_first=True, dtype=int)
+
+# Drop the original 'OpSys' column as it's no longer needed.
+df = df.drop('OpSys', axis=1)
+
+# Display the updated DataFrame to see the changes in GPU and OpSys columns.
+df.head()
+# Drop the 'Product' column as it contains too many unique values and is too granular for effective modeling.
+df = df.drop('Product', axis=1)
+
+# Display the information and the first few rows of the final DataFrame with all engineered features before modeling.
+df.info()
+df.head()
