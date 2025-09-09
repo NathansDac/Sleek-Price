@@ -15,3 +15,15 @@ Data Cleaning - Outliers:
 
 Changes: Visualized numerical features (Inches, Weight, Price_euros) using box plots. Defined and applied functions (remove_outliers_iqr, remove_outliers_zscore) to remove outliers based on IQR and Z-score methods. Converted 'Weight' to numeric before outlier removal. Printed the shape of the DataFrame before and after outlier removal.
 Explanation and Justification: Outliers can significantly impact statistical analysis and machine learning models. Box plots help in visualizing the distribution and identifying potential outliers. Using both IQR (robust to skewed data) and Z-score (suitable for data closer to normal) methods allows for a tailored approach to outlier removal based on the characteristics of each numerical feature, aiming to improve model robustness.
+Data Cleaning - Data Type Conversion:
+
+Changes: Converted the Ram column from string (e.g., '8GB') to integer by removing 'GB'. Converted the Weight column to float after removing 'kg'.
+Explanation and Justification: Machine learning models typically require numerical input. The 'Ram' and 'Weight' columns were initially strings containing units ('GB', 'kg'). Converting them to numerical types (integer for RAM, float for Weight) is necessary for numerical operations and model compatibility.
+Feature Engineering - Categorical Features (One-Hot Encoding):
+
+Changes: Performed one-hot encoding on Company, TypeName, Cpu_Brand, Cpu_Type, Gpu_Brand, and OpSys_Type columns using pd.get_dummies(). drop_first=True was used.
+Explanation and Justification: Categorical features (like Company, TypeName, etc.) need to be converted into a numerical format for most machine learning algorithms. One-hot encoding creates new binary columns for each category. drop_first=True is used to avoid multicollinearity, which can be an issue in linear models.
+Feature Engineering - Screen Resolution:
+
+Changes: Extracted width and height from the ScreenResolution string using regex. Calculated PPI (Pixels Per Inch). Created a binary Touchscreen column based on the presence of 'Touchscreen' in resolution types. Extracted the Screen_Resolution_Type. Dropped the original ScreenResolution column.
+Explanation and Justification: The original ScreenResolution column contained multiple pieces of information in a single string. Extracting width, height, and calculating PPI provides numerical features that are likely better predictors of price than the original string. Creating a binary Touchscreen feature simplifies this information for the model. Dropping the original column removes redundant information.
