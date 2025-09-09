@@ -35,3 +35,11 @@ Feature Engineering - Memory:
 
 Changes: Created a function to parse the Memory string and extract the sizes for SSD, HDD, and Flash Storage. Applied the function to create new columns (SSD_GB, HDD_GB, Flash_Storage_GB). Dropped the original Memory column.
 Explanation and Justification: The Memory column combined storage type and size. Separating these into distinct numerical features (size in GB for each type) provides the model with more structured information about the storage configuration. Dropping the original column removes redundant information.
+Dropping Redundant/Unnecessary Columns:
+
+Changes: Dropped the laptop_ID and Product columns.
+Explanation and Justification: laptop_ID is just an identifier and has no predictive power. The Product column had too many unique values and was too granular, making it unsuitable as a feature for this model.
+Exploratory Data Analysis (EDA):
+
+Changes: Generated a correlation matrix heatmap of numerical features. Created scatter plots of Ram vs. Price_euros, Weight vs. Price_euros, and Screen_Resolution_Width vs. Price_euros.
+Explanation and Justification: EDA is crucial for understanding the data and the relationships between features. The correlation matrix helps identify which features are strongly correlated with the target variable (Price_euros). Scatter plots provide visual confirmation of these relationships and help in understanding the nature of the correlations (e.g., linear, non-linear).
