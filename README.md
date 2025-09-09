@@ -43,3 +43,7 @@ Exploratory Data Analysis (EDA):
 
 Changes: Generated a correlation matrix heatmap of numerical features. Created scatter plots of Ram vs. Price_euros, Weight vs. Price_euros, and Screen_Resolution_Width vs. Price_euros.
 Explanation and Justification: EDA is crucial for understanding the data and the relationships between features. The correlation matrix helps identify which features are strongly correlated with the target variable (Price_euros). Scatter plots provide visual confirmation of these relationships and help in understanding the nature of the correlations (e.g., linear, non-linear).
+Model Building and Evaluation:
+
+Changes: Split the data into training and testing sets using train_test_split. Initialized and trained a LinearRegression model. Made predictions on the test set. Evaluated the model using MAE, MSE, RMSE, and R-squared. Printed the evaluation metrics and an interpretation of R-squared.
+Explanation and Justification: This is the core machine learning part of the project. Splitting the data ensures that the model is evaluated on unseen data, providing a realistic measure of its performance. Linear Regression is a suitable model for predicting a continuous target variable like price. Evaluating the model with standard regression metrics quantifies how well the model performs and allows for comparison with other models if necessary.
