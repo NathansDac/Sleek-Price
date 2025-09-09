@@ -217,10 +217,11 @@ import os
 st.title("Sleek Price 💻")
 st.markdown("""
 This web application predicts the price of a laptop based on its specifications.
-Input the details of the laptop below to get an estimated price in Euros.
+To function correctly, the 'laptop_price.csv' file must be in the same GitHub repository directory as this script.
 """)
 
-def load_data():
+@st.cache_data
+def load_data_and_train_model():
     """
     Loads the dataset and performs all necessary preprocessing and model training.
     This function is cached to avoid re-running on every user interaction.
@@ -229,17 +230,20 @@ def load_data():
         # Use a relative path to the dataset, assuming it's in the same directory.
         DATASET_PATH = os.path.join(os.path.dirname(__file__), 'laptop_price.csv')
         df = pd.read_csv(DATASET_PATH, encoding='latin-1')
-
-        # Store original categorical column values for Streamlit selectboxes.
-        original_companies = sorted(df['Company'].unique().tolist())
-        original_typenames = sorted(df['TypeName'].unique().tolist())
-
-        # Feature Engineering - Preprocessing
-        df['Weight'] = df['Weight'].str.replace('kg', '', regex=False).astype(float)
-        df['Ram'] = df['Ram'].str.replace('GB', '', regex=False).astype(int)
-        df['Inches'] = df['Inches'].astype(float)
         
-        # CPU
+        # --- FIX: Robust data type conversion ---
+        # The previous code assumed all values were perfectly formatted.
+        # This new code handles potential non-numeric values by converting them to NaN
+        # and then filling the NaN values to prevent errors.
+        df['Weight'] = pd.to_numeric(df['Weight'].str.replace('kg', '', regex=False), errors='coerce')
+        df['Ram'] = pd.to_numeric(df['Ram'].str.replace('GB', '', regex=False), errors='coerce')
+        df['Inches'] = pd.to_numeric(df['Inches'], errors='coerce')
+
+        # Fill any NaN values that resulted from the above conversion
+        df.fillna(0, inplace=True)
+
+        # --- Preprocessing and Feature Engineering (rest of the code is similar) ---
+        # CPU features
         def get_cpu_brand(cpu_string):
             if 'Intel' in cpu_string: return 'Intel'
             elif 'AMD' in cpu_string: return 'AMD'
@@ -254,7 +258,7 @@ def load_data():
             return 'Other'
         df['Cpu_Type'] = df['Cpu'].apply(get_cpu_type)
         
-        # GPU
+        # GPU features
         def get_gpu_brand(gpu_string):
             if 'Nvidia' in gpu_string: return 'Nvidia'
             elif 'AMD' in gpu_string: return 'AMD'
@@ -262,7 +266,7 @@ def load_data():
             return 'Other'
         df['Gpu_Brand'] = df['Gpu'].apply(get_gpu_brand)
         
-        # OS
+        # OS features
         def get_os_type(os_string):
             if 'Windows' in os_string: return 'Windows'
             elif 'Mac' in os_string: return 'Mac'
@@ -270,13 +274,13 @@ def load_data():
             return 'Other'
         df['OpSys_Type'] = df['OpSys'].apply(get_os_type)
         
-        # Screen Resolution
+        # Screen Resolution features
         df['Screen_Resolution_Type'] = df['ScreenResolution'].apply(lambda x: ' '.join(x.split()[:-1]) if 'x' in x else x)
         df[['Screen_Resolution_Width', 'Screen_Resolution_Height']] = df['ScreenResolution'].str.extract(r'(\d+)x(\d+)').astype(int)
         df['PPI'] = ((df['Screen_Resolution_Width']**2 + df['Screen_Resolution_Height']**2)**0.5 / df['Inches']).astype(float)
         df['Touchscreen'] = df['ScreenResolution'].str.contains('Touchscreen', case=False, na=False).astype(int)
 
-        # Storage
+        # Storage features
         def parse_storage(storage_string):
             ssd_gb, hdd_gb = 0, 0
             storage_types = storage_string.split('+')
@@ -292,16 +296,25 @@ def load_data():
             
         df[['SSD_GB', 'HDD_GB']] = df['Memory'].apply(parse_storage)
 
-        # Drop original columns
+        # Drop original columns and prepare for one-hot encoding
         df = df.drop(columns=['ScreenResolution', 'Cpu', 'Memory', 'Gpu', 'OpSys', 'Product', 'laptop_ID', 'Screen_Resolution_Width', 'Screen_Resolution_Height'], errors='ignore')
         
-        # One-hot encoding
+        # Perform one-hot encoding
         categorical_cols = ['Company', 'TypeName', 'Screen_Resolution_Type', 'Cpu_Brand', 'Cpu_Type', 'Gpu_Brand', 'OpSys_Type']
         df = pd.get_dummies(df, columns=categorical_cols, drop_first=True, dtype=int)
+        
+        # Get the final list of columns for the trained model.
+        trained_columns = df.drop('Price_euros', axis=1).columns.tolist()
 
-        # Handle 'Flash_Storage_GB' if it exists. Note: Your original code had 'Flash_Storage_GB', but the parser didn't set it. I've simplified it here.
-        if 'Flash_Storage_GB' in df.columns:
-            df = df.drop(columns=['Flash_Storage_GB'])
+        # Get unique values for dropdowns after preprocessing
+        original_values = {}
+        for col in categorical_cols:
+            original_values[col] = sorted(pd.read_csv(DATASET_PATH, encoding='latin-1')[col].unique())
+        
+        # --- FIX: Handling 'Screen_Resolution_Type' differently
+        # The original code's `ScreenResolutionType` extraction was simplified,
+        # so we'll grab the unique values from the processed DataFrame.
+        original_values['Screen_Resolution_Type'] = sorted(pd.Series(df['Screen_Resolution_Type'].unique()).dropna().tolist())
 
         # Separate features (X) and target variable (y)
         X = df.drop('Price_euros', axis=1)
@@ -310,31 +323,17 @@ def load_data():
         # Train the model
         model = LinearRegression()
         model.fit(X, y)
-        
-        # Get unique values for dropdowns after preprocessing
-        original_cpu_brands = sorted(df['Cpu_Brand_Intel'].unique().tolist() + df['Cpu_Brand_Other'].unique().tolist() + ['AMD']) # Example of getting back original values
-        original_cpu_types = sorted(df['Cpu_Type_Core i'].unique().tolist() + df['Cpu_Type_Other'].unique().tolist() + ['Ryzen', 'Celeron', 'Pentium'])
 
-        return model, X.columns.tolist(), {
-            'Company': sorted(df['Company_Dell'].unique().tolist() + ['Apple', 'Dell', 'HP', 'MSI', 'Acer']),
-            'TypeName': sorted(df['TypeName_Gaming'].unique().tolist() + ['Gaming', 'Ultrabook', 'Notebook', 'Workstation']),
-            'ScreenResolutionType': sorted(df.filter(like='Screen_Resolution_Type_').columns.str.replace('Screen_Resolution_Type_', '').tolist()),
-            'CpuBrand': sorted(df.filter(like='Cpu_Brand_').columns.str.replace('Cpu_Brand_', '').tolist() + ['Intel', 'AMD']),
-            'CpuType': sorted(df.filter(like='Cpu_Type_').columns.str.replace('Cpu_Type_', '').tolist() + ['Core i', 'Ryzen']),
-            'GpuBrand': sorted(df.filter(like='Gpu_Brand_').columns.str.replace('Gpu_Brand_', '').tolist() + ['Nvidia', 'AMD', 'Intel']),
-            'OpSysType': sorted(df.filter(like='OpSys_Type_').columns.str.replace('OpSys_Type_', '').tolist() + ['Windows', 'Mac', 'Linux'])
-        }
-
+        return model, trained_columns, original_values
     except FileNotFoundError:
-        st.error(f"Error: Dataset not found. Please ensure 'laptop_price.csv' is in the same directory.")
+        st.error("Error: Dataset not found. Please ensure 'laptop_price.csv' is in the same directory.")
         st.stop()
     except Exception as e:
         st.error(f"An error occurred during data loading or preprocessing: {e}")
         st.stop()
-        
-# Load data once and cache the result
-st.cache_data
-model, trained_columns, original_values = load_data()
+
+# Load data and train the model. This is done only once due to caching.
+model, trained_columns, original_values = load_data_and_train_model()
 
 # --- Streamlit UI for User Input ---
 st.header("Enter Laptop Specifications")
@@ -353,13 +352,13 @@ screen_resolution = st.text_input("Screen Resolution (e.g., 1920x1080)", value="
 touchscreen = st.selectbox("Touchscreen", ["No", "Yes"])
 
 # Categorical features
-company = st.selectbox("Company", sorted(original_values['Company']))
-typename = st.selectbox("Type Name", sorted(original_values['TypeName']))
-cpu_brand = st.selectbox("CPU Brand", sorted(original_values['CpuBrand']))
-cpu_type = st.selectbox("CPU Type", sorted(original_values['CpuType']))
-gpu_brand = st.selectbox("GPU Brand", sorted(original_values['GpuBrand']))
-opsys_type = st.selectbox("Operating System Type", sorted(original_values['OpSysType']))
-
+company = st.selectbox("Company", original_values['Company'])
+typename = st.selectbox("Type Name", original_values['TypeName'])
+screen_res_type = st.selectbox("Screen Resolution Type", original_values['Screen_Resolution_Type'])
+cpu_brand = st.selectbox("CPU Brand", original_values['Cpu_Brand'])
+cpu_type = st.selectbox("CPU Type", original_values['Cpu_Type'])
+gpu_brand = st.selectbox("GPU Brand", original_values['Gpu_Brand'])
+opsys_type = st.selectbox("Operating System Type", original_values['OpSys_Type'])
 
 # Predict button
 if st.button("Predict Price"):
@@ -367,9 +366,9 @@ if st.button("Predict Price"):
     new_laptop_data = dict.fromkeys(trained_columns, 0)
     
     # Fill in numerical features
-    new_laptop_data['Inches'] = inches
+    new_laptop_data['Inches'] = float(inches)
     new_laptop_data['Ram'] = int(ram)
-    new_laptop_data['Weight'] = weight
+    new_laptop_data['Weight'] = float(weight)
     
     # Storage
     if storage_type == 'SSD':
@@ -396,11 +395,12 @@ if st.button("Predict Price"):
 
     set_one_hot_column(new_laptop_data, 'Company', company)
     set_one_hot_column(new_laptop_data, 'TypeName', typename)
+    set_one_hot_column(new_laptop_data, 'Screen_Resolution_Type', screen_res_type)
     set_one_hot_column(new_laptop_data, 'Cpu_Brand', cpu_brand)
     set_one_hot_column(new_laptop_data, 'Cpu_Type', cpu_type)
     set_one_hot_column(new_laptop_data, 'Gpu_Brand', gpu_brand)
     set_one_hot_column(new_laptop_data, 'OpSys_Type', opsys_type)
-    
+
     # Create DataFrame and predict
     new_laptop_df = pd.DataFrame([new_laptop_data], columns=trained_columns)
     predicted_price = model.predict(new_laptop_df)
