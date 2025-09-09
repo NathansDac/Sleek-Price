@@ -1,0 +1,36 @@
+# Convert the 'Ram' column from string (e.g., '8GB') to integer by removing 'GB'.
+df['Ram'] = df['Ram'].str.replace('GB', '').astype(int)
+
+# Display the updated DataFrame to confirm the data type change.
+display(df.head())
+# Perform one-hot encoding on the 'Company' column to convert categorical data into a numerical format suitable for machine learning models.
+# 'drop_first=True' is used to avoid multicollinearity.
+df = pd.get_dummies(df, columns=['Company'], drop_first=True, dtype=int)
+
+# Display the updated DataFrame with the new one-hot encoded columns for 'Company'.
+display(df.head())
+# Perform one-hot encoding on the 'TypeName' column, similar to the 'Company' column.
+df = pd.get_dummies(df, columns=['TypeName'], drop_first=True, dtype=int)
+
+# Display the updated DataFrame with the new one-hot encoded columns for 'TypeName'.
+display(df.head())
+# Feature engineering on the 'ScreenResolution' column to extract more useful information.
+# Extract the width and height dimensions from the resolution string using regex.
+df[['Screen_Resolution_Width', 'Screen_Resolution_Height']] = df['ScreenResolution'].str.extract(r'(\d+)x(\d+)').astype(int)
+
+# Create a new column combining width and height as a string.
+df['Screen_Resolution_Dimension'] = df['Screen_Resolution_Width'].astype(str) + 'x' + df['Screen_Resolution_Height'].astype(str)
+
+# Extract the type of screen resolution (e.g., 'Full HD', 'IPS Panel Retina Display') by removing the resolution part.
+df['Screen_Resolution_Type'] = df['ScreenResolution'].apply(lambda x: ' '.join(x.split()[:-1]))
+
+# Drop the original 'ScreenResolution' column as the relevant information has been extracted.
+df = df.drop('ScreenResolution', axis=1)
+
+# Display the updated DataFrame with the new engineered screen resolution features.
+display(df.head())
+# Perform one-hot encoding on the engineered 'Screen_Resolution_Type' column.
+df = pd.get_dummies(df, columns=['Screen_Resolution_Type'], drop_first=True, dtype=int)
+
+# Display the updated DataFrame with the new one-hot encoded columns for 'Screen_Resolution_Type'.
+display(df.head())
