@@ -1,0 +1,141 @@
+# Display the unique values and their counts in the 'Cpu' column to understand the variety of CPU entries.
+display(df['Cpu'].value_counts())
+# Feature engineering on the 'Cpu' column to extract the CPU brand.
+# Define a function to extract the brand based on keywords in the CPU string.
+def extract_cpu_brand(cpu_string):
+    if 'Intel' in cpu_string:
+        return 'Intel'
+    elif 'AMD' in cpu_string:
+        return 'AMD'
+    elif 'Samsung' in cpu_string:
+        return 'Samsung'
+    else:
+        return 'Other'
+
+# Apply the function to create the new 'Cpu_Brand' column.
+df['Cpu_Brand'] = df['Cpu'].apply(extract_cpu_brand)
+
+# Display the updated DataFrame with the new 'Cpu_Brand' column.
+display(df.head())
+# Feature engineering on the 'Cpu' column to extract the CPU type.
+# Define a function to extract the type based on keywords in the CPU string.
+def extract_cpu_type(cpu_string):
+    if 'Core i' in cpu_string:
+        return 'Core i'
+    elif 'Ryzen' in cpu_string:
+        return 'Ryzen'
+    elif 'Celeron' in cpu_string:
+        return 'Celeron'
+    elif 'Pentium' in cpu_string:
+        return 'Pentium'
+    elif 'Atom' in cpu_string:
+        return 'Atom'
+    elif 'Xeon' in cpu_string:
+        return 'Xeon'
+    elif 'FX' in cpu_string:
+        return 'FX'
+    elif 'E-Series' in cpu_string:
+        return 'E-Series'
+    elif 'A' in cpu_string:
+        return 'A'
+    elif 'M' in cpu_string:
+        return 'M'
+    else:
+        return 'Other'
+
+# Apply the function to create the new 'Cpu_Type' column.
+df['Cpu_Type'] = df['Cpu'].apply(extract_cpu_type)
+
+# Display the updated DataFrame with the new 'Cpu_Type' column.
+display(df.head())
+# Feature engineering on the 'Cpu' column to extract the clock speed.
+import re # Import the regular expression module
+
+# Define a function to extract the clock speed (GHz) from the CPU string using regex.
+def extract_clock_speed(cpu_string):
+    match = re.search(r'(\d+\.?\d*)GHz', cpu_string) # Find a pattern of digits, optional dot, digits, followed by "GHz"
+    if match:
+        return float(match.group(1)) # Extract the captured group (the number) and convert to float
+    return np.nan # Return NaN if no clock speed is found
+
+# Apply the function to create the new 'Cpu_Clock_Speed' column.
+df['Cpu_Clock_Speed'] = df['Cpu'].apply(extract_clock_speed)
+
+# Display the updated DataFrame with the new 'Cpu_Clock_Speed' column.
+display(df.head())
+# Perform one-hot encoding on the engineered 'Cpu_Brand' and 'Cpu_Type' columns.
+df = pd.get_dummies(df, columns=['Cpu_Brand'], drop_first=True, dtype=int)
+df = pd.get_dummies(df, columns=['Cpu_Type'], drop_first=True, dtype=int)
+
+# Display the updated DataFrame with the new one-hot encoded columns for CPU brand and type.
+display(df.head())
+# Drop the original 'Cpu' column as its relevant information has been extracted into new features.
+df = df.drop('Cpu', axis=1)
+
+# Display the updated DataFrame to confirm the removal of the 'Cpu' column.
+display(df.head())
+# Feature engineering on the 'Memory' column to separate storage types (SSD, HDD, Flash Storage) and their sizes.
+import re # Import the regular expression module
+
+# Define a function to parse the storage string and extract sizes for different storage types.
+def parse_storage(storage_string):
+    # Initialize storage sizes to 0
+    ssd_gb = 0
+    hdd_gb = 0
+    flash_gb = 0
+
+    # Split the string to handle multiple storage types (e.g., '128GB SSD + 1TB HDD')
+    storage_types = storage_string.split('+')
+
+    for item in storage_types:
+        # Check for SSD
+        if 'SSD' in item:
+            size_gb = 0
+            # Use regex to find a number followed by 'GB' or 'TB'
+            match = re.search(r'(\d+)\s*(GB|TB)', item)
+            if match:
+                size = int(match.group(1))
+                unit = match.group(2)
+                if unit == 'TB':
+                    size_gb = size * 1024 # Convert TB to GB
+                else:
+                    size_gb = size
+            ssd_gb = size_gb
+
+        # Check for HDD
+        if 'HDD' in item:
+            size_gb = 0
+            match = re.search(r'(\d+)\s*(GB|TB)', item)
+            if match:
+                size = int(match.group(1))
+                unit = match.group(2)
+                if unit == 'TB':
+                    size_gb = size * 1024
+                else:
+                    size_gb = size
+            hdd_gb = size_gb
+
+        # Check for Flash Storage
+        if 'Flash' in item:
+            size_gb = 0
+            match = re.search(r'(\d+)\s*(GB|TB)', item)
+            if match:
+                size = int(match.group(1))
+                unit = match.group(2)
+                if unit == 'TB':
+                    size_gb = size * 1024
+                else:
+                    size_gb = size
+            flash_gb = size_gb
+
+    # Return a pandas Series with the extracted storage sizes
+    return pd.Series([ssd_gb, hdd_gb, flash_gb])
+
+# Apply the function to the 'Memory' column and create new columns for each storage type.
+df[['SSD_GB', 'HDD_GB', 'Flash_Storage_GB']] = df['Memory'].apply(parse_storage)
+
+# Drop the original 'Memory' column as its information has been extracted.
+df = df.drop('Memory', axis=1)
+
+# Display the updated DataFrame to see the new storage columns.
+df.head()
