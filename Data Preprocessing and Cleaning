@@ -1,0 +1,17 @@
+# Importing all the necessary libraries for data manipulation, visualization, and machine learning.
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import sklearn as sk # Importing the scikit-learn library
+# Mounting Google Drive to access the dataset stored in the drive.
+from google.colab import drive
+drive.mount('/content/drive')
+# Loading the dataset into a pandas DataFrame and displaying the first five rows to inspect the data structure.
+df = pd.read_csv("//content/drive/MyDrive/CPE 221 Lab/datasets/laptop_price.csv", encoding='latin-1')
+
+df.head()# Checking for missing values in each column to understand data completeness.
+df.isnull().sum()# Checking if there are any missing values in the entire DataFrame.
+df.isnull().values.any()
+# Getting concise information about the DataFrame, including the data types of each column and the number of non-null values.
+df.info()
